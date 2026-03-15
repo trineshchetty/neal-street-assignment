@@ -55,3 +55,25 @@ variable "availability_zone" {
   description = "AZ for the single-AZ dev topology"
   type        = string
 }
+
+# ------------------------------------------------------------------------------
+# Compute
+# ------------------------------------------------------------------------------
+
+variable "instance_type" {
+  description = "EC2 instance type"
+  type        = string
+  default     = "t3.micro"
+}
+
+variable "instance_count" {
+  description = "Number of EC2 instances behind the ALB"
+  type        = number
+  default     = 1
+}
+
+variable "app_port" {
+  description = "Port the application listens on"
+  type        = number
+  default     = 80
+}
