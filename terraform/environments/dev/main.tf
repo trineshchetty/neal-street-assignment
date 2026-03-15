@@ -92,3 +92,20 @@ module "compute" {
   alb_security_group_id = aws_security_group.alb.id
   tags                  = local.common_tags
 }
+
+# ------------------------------------------------------------------------------
+# Load Balancer
+# ------------------------------------------------------------------------------
+
+module "loadbalancer" {
+  source = "../../modules/loadbalancer"
+
+  project           = var.project
+  environment       = var.environment
+  vpc_id            = module.networking.vpc_id
+  public_subnet_ids = [module.networking.public_subnet_id]
+  security_group_id = aws_security_group.alb.id
+  instance_ids      = module.compute.instance_ids
+  app_port          = var.app_port
+  tags              = local.common_tags
+}
