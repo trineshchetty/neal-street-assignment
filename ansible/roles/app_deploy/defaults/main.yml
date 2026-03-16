@@ -1,0 +1,28 @@
+# ------------------------------------------------------------------------------
+# App Deployment — Default Variables
+# ------------------------------------------------------------------------------
+
+# Application
+app_name: rewards-health
+app_user: rewards
+app_group: rewards
+app_dir: /opt/rewards
+app_port: 8000
+app_python_version: python3.11
+
+# Git commit SHA — injected by CI, used in /health response
+commit_sha: "unknown"
+
+# Secrets Manager secret name — injected from Terraform output
+secret_name: ""
+
+# AWS region
+aws_region: eu-west-1
+
+# Gunicorn
+gunicorn_workers: 3
+gunicorn_bind: "127.0.0.1:{{ app_port }}"
+
+# Nginx
+nginx_server_name: "_"
+nginx_proxy_pass: "http://127.0.0.1:{{ app_port }}"

@@ -1,0 +1,13 @@
+---
+# ------------------------------------------------------------------------------
+# CloudWatch Agent Installation
+# ------------------------------------------------------------------------------
+# The agent is available in the Amazon Linux 2023 default repos.
+# No need to download from S3 or add third-party repos.
+# ------------------------------------------------------------------------------
+
+- name: Install CloudWatch Agent
+  ansible.builtin.dnf:
+    name: "{{ cloudwatch_agent_package }}"
+    state: present
+  tags: [observability]

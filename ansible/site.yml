@@ -1,0 +1,34 @@
+---
+# ------------------------------------------------------------------------------
+# Neal Street Rewards — Site Playbook
+# ------------------------------------------------------------------------------
+# Orchestrates all roles in the correct order:
+#   1. Security baseline — harden the OS before anything else
+#   2. App deployment   — deploy Flask + Gunicorn + Nginx
+#   3. Observability    — CloudWatch Agent for logs and metrics
+#
+# Usage:
+#   ansible-playbook site.yml                          # all roles, all hosts
+#   ansible-playbook site.yml --tags security          # security only
+#   ansible-playbook site.yml --limit env_dev          # dev only
+#   ansible-playbook site.yml --tags deploy            # redeploy app only
+# ------------------------------------------------------------------------------
+
+- name: Configure Neal Street Rewards instances
+  hosts: all
+  become: true
+
+  vars:
+    project: neal-street
+    environment: dev
+    aws_region: eu-west-1
+
+  roles:
+    - role: security_baseline
+      tags: [security]
+
+    - role: app_deploy
+      tags: [deploy]
+
+    - role: observability
+      tags: [observability]

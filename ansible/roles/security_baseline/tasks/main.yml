@@ -1,0 +1,28 @@
+---
+# ------------------------------------------------------------------------------
+# Security Baseline Role — Task Entry Point
+# ------------------------------------------------------------------------------
+# Applies OS-level hardening to Amazon Linux 2023 instances.
+# This role runs BEFORE the app deployment role to ensure a hardened base.
+#
+# Why a dedicated role instead of user_data?
+#   - User data runs once at launch and has no convergence guarantee
+#   - Ansible is idempotent — re-running this role corrects drift
+#   - Changes are version-controlled and auditable via git blame
+# ------------------------------------------------------------------------------
+
+- name: Include OS patching tasks
+  ansible.builtin.include_tasks: patching.yml
+  tags: [security, patching]
+
+- name: Include SSH hardening tasks
+  ansible.builtin.include_tasks: ssh_hardening.yml
+  tags: [security, ssh]
+
+- name: Include kernel hardening tasks
+  ansible.builtin.include_tasks: kernel_hardening.yml
+  tags: [security, kernel]
+
+- name: Include audit configuration tasks
+  ansible.builtin.include_tasks: auditd.yml
+  tags: [security, audit]

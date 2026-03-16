@@ -1,0 +1,41 @@
+---
+# ------------------------------------------------------------------------------
+# Python Virtual Environment
+# ------------------------------------------------------------------------------
+# Uses a venv to isolate app dependencies from system Python.
+# This prevents version conflicts with system packages and makes
+# the deployment self-contained and reproducible.
+# ------------------------------------------------------------------------------
+
+- name: Install Python and pip
+  ansible.builtin.dnf:
+    name:
+      - "{{ app_python_version }}"
+      - "{{ app_python_version }}-pip"
+      - "{{ app_python_version }}-devel"
+    state: present
+  tags: [deploy]
+
+- name: Create application directory
+  ansible.builtin.file:
+    path: "{{ app_dir }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: "0750"
+  tags: [deploy]
+
+- name: Create Python virtual environment
+  ansible.builtin.command:
+    cmd: "{{ app_python_version }} -m venv {{ app_dir }}/venv"
+    creates: "{{ app_dir }}/venv/bin/activate"
+  become_user: "{{ app_user }}"
+  tags: [deploy]
+
+- name: Install pip requirements
+  ansible.builtin.pip:
+    requirements: "{{ app_dir }}/requirements.txt"
+    virtualenv: "{{ app_dir }}/venv"
+  become_user: "{{ app_user }}"
+  notify: restart gunicorn
+  tags: [deploy]

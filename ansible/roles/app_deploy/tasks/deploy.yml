@@ -1,0 +1,32 @@
+---
+# ------------------------------------------------------------------------------
+# Application Code Deployment
+# ------------------------------------------------------------------------------
+# Copies the Flask app and config files to the instance. In a production
+# pipeline, this would pull a versioned artifact from S3/ECR. For this
+# assessment, we copy directly from the repo via Ansible.
+# ------------------------------------------------------------------------------
+
+- name: Copy application code
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ app_dir }}/{{ item | basename }}"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: "0640"
+  loop:
+    - ../../../../app/app.py
+    - ../../../../app/gunicorn.conf.py
+    - ../../../../app/requirements.txt
+  notify: restart gunicorn
+  tags: [deploy]
+
+- name: Template environment file for the application
+  ansible.builtin.template:
+    src: app.env.j2
+    dest: "{{ app_dir }}/.env"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: "0600"
+  notify: restart gunicorn
+  tags: [deploy]

@@ -1,0 +1,30 @@
+---
+# ------------------------------------------------------------------------------
+# Audit Daemon Configuration
+# ------------------------------------------------------------------------------
+# auditd provides kernel-level system call auditing. For a payments platform,
+# this is a compliance requirement (PCI-DSS, SOC2) — you need an audit trail
+# of who did what on the system.
+#
+# Rules monitor:
+#   - Authentication events (login/logout/failures)
+#   - Privilege escalation (sudo, su, setuid)
+#   - File integrity on critical paths (/etc/passwd, /etc/shadow, sshd_config)
+# ------------------------------------------------------------------------------
+
+- name: Deploy audit rules
+  ansible.builtin.template:
+    src: audit.rules.j2
+    dest: /etc/audit/rules.d/hardening.rules
+    owner: root
+    group: root
+    mode: "0640"
+  notify: restart auditd
+  tags: [security, audit]
+
+- name: Enable and start auditd
+  ansible.builtin.systemd:
+    name: auditd
+    enabled: true
+    state: started
+  tags: [security, audit]

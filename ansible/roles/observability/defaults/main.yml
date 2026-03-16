@@ -1,0 +1,21 @@
+# ------------------------------------------------------------------------------
+# Observability — Default Variables
+# ------------------------------------------------------------------------------
+
+# CloudWatch Agent
+cloudwatch_agent_package: amazon-cloudwatch-agent
+
+# Log group names — must match Terraform observability module outputs
+app_log_group: "/neal-street/dev/app"
+system_log_group: "/neal-street/dev/system"
+
+# AWS region
+aws_region: eu-west-1
+
+# Application log source — Gunicorn writes to systemd journal,
+# but we also capture the direct log file if it exists
+app_log_path: "/opt/rewards/logs/app.log"
+app_name: rewards-health
+
+# Log retention at the agent level (flush interval in seconds)
+log_flush_interval: 5

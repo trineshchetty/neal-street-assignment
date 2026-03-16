@@ -1,0 +1,85 @@
+{
+  "agent": {
+    "metrics_collection_interval": 60,
+    "run_as_user": "root",
+    "region": "{{ aws_region }}"
+  },
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/messages",
+            "log_group_name": "{{ system_log_group }}",
+            "log_stream_name": "{instance_id}/messages",
+            "timezone": "UTC",
+            "retention_in_days": -1
+          },
+          {
+            "file_path": "/var/log/secure",
+            "log_group_name": "{{ system_log_group }}",
+            "log_stream_name": "{instance_id}/secure",
+            "timezone": "UTC",
+            "retention_in_days": -1
+          },
+          {
+            "file_path": "/var/log/audit/audit.log",
+            "log_group_name": "{{ system_log_group }}",
+            "log_stream_name": "{instance_id}/audit",
+            "timezone": "UTC",
+            "retention_in_days": -1
+          },
+          {
+            "file_path": "/var/log/nginx/access.log",
+            "log_group_name": "{{ app_log_group }}",
+            "log_stream_name": "{instance_id}/nginx-access",
+            "timezone": "UTC",
+            "retention_in_days": -1
+          },
+          {
+            "file_path": "/var/log/nginx/error.log",
+            "log_group_name": "{{ app_log_group }}",
+            "log_stream_name": "{instance_id}/nginx-error",
+            "timezone": "UTC",
+            "retention_in_days": -1
+          }
+        ]
+      }
+    },
+    "force_flush_interval": {{ log_flush_interval }}
+  },
+  "metrics": {
+    "namespace": "NealStreet/{{ app_name }}",
+    "metrics_collected": {
+      "mem": {
+        "measurement": [
+          "mem_used_percent",
+          "mem_available_percent"
+        ],
+        "metrics_collection_interval": 60
+      },
+      "disk": {
+        "measurement": [
+          "disk_used_percent"
+        ],
+        "metrics_collection_interval": 300,
+        "resources": [
+          "/"
+        ]
+      },
+      "cpu": {
+        "measurement": [
+          "cpu_usage_idle",
+          "cpu_usage_user",
+          "cpu_usage_system"
+        ],
+        "metrics_collection_interval": 60,
+        "totalcpu": true
+      }
+    },
+    "append_dimensions": {
+      "InstanceId": "${aws:InstanceId}",
+      "AutoScalingGroupName": "${aws:AutoScalingGroupName}"
+    }
+  }
+}

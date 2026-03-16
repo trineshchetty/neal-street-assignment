@@ -1,0 +1,33 @@
+---
+# ------------------------------------------------------------------------------
+# App Deployment Role — Task Entry Point
+# ------------------------------------------------------------------------------
+# Deploys the Flask health app with Gunicorn + Nginx reverse proxy.
+#
+# Order matters:
+#   1. System user — least-privilege app user (no login shell, no home dir)
+#   2. Python venv — isolated dependencies, no system-level pip pollution
+#   3. App code — copied from the repo, owned by app user
+#   4. Gunicorn systemd unit — process supervision, restart policies
+#   5. Nginx reverse proxy — TLS termination point, request buffering
+# ------------------------------------------------------------------------------
+
+- name: Include system user setup
+  ansible.builtin.include_tasks: user.yml
+  tags: [deploy]
+
+- name: Include Python environment setup
+  ansible.builtin.include_tasks: python.yml
+  tags: [deploy]
+
+- name: Include application deployment
+  ansible.builtin.include_tasks: deploy.yml
+  tags: [deploy]
+
+- name: Include Gunicorn service setup
+  ansible.builtin.include_tasks: gunicorn.yml
+  tags: [deploy]
+
+- name: Include Nginx reverse proxy setup
+  ansible.builtin.include_tasks: nginx.yml
+  tags: [deploy]
