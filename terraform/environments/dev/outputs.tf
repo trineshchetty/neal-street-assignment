@@ -49,3 +49,32 @@ output "target_group_arn" {
   description = "ARN of the ALB target group"
   value       = module.loadbalancer.target_group_arn
 }
+
+# ------------------------------------------------------------------------------
+# Secrets Outputs
+# ------------------------------------------------------------------------------
+
+output "secret_arn" {
+  description = "ARN of the Secrets Manager secret"
+  value       = module.secrets.secret_arn
+  sensitive   = true
+}
+
+output "secret_name" {
+  description = "Name of the Secrets Manager secret (for Ansible/app config)"
+  value       = module.secrets.secret_name
+}
+
+# ------------------------------------------------------------------------------
+# Observability Outputs
+# ------------------------------------------------------------------------------
+
+output "app_log_group_name" {
+  description = "CloudWatch log group for application logs"
+  value       = module.observability.app_log_group_name
+}
+
+output "system_log_group_name" {
+  description = "CloudWatch log group for system logs"
+  value       = module.observability.system_log_group_name
+}

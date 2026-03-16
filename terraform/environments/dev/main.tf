@@ -89,8 +89,10 @@ module "compute" {
   instance_type         = var.instance_type
   instance_count        = var.instance_count
   app_port              = var.app_port
-  alb_security_group_id = aws_security_group.alb.id
-  tags                  = local.common_tags
+  alb_security_group_id     = aws_security_group.alb.id
+  secrets_manager_arn       = module.secrets.secret_arn
+  cloudwatch_log_group_name = module.observability.app_log_group_name
+  tags                      = local.common_tags
 }
 
 # ------------------------------------------------------------------------------
@@ -108,4 +110,30 @@ module "loadbalancer" {
   instance_ids      = module.compute.instance_ids
   app_port          = var.app_port
   tags              = local.common_tags
+}
+
+# ------------------------------------------------------------------------------
+# Secrets
+# ------------------------------------------------------------------------------
+
+module "secrets" {
+  source = "../../modules/secrets"
+
+  project     = var.project
+  environment = var.environment
+  tags        = local.common_tags
+}
+
+# ------------------------------------------------------------------------------
+# Observability
+# ------------------------------------------------------------------------------
+
+module "observability" {
+  source = "../../modules/observability"
+
+  project                 = var.project
+  environment             = var.environment
+  alb_arn_suffix          = module.loadbalancer.alb_arn_suffix
+  target_group_arn_suffix = module.loadbalancer.target_group_arn_suffix
+  tags                    = local.common_tags
 }
