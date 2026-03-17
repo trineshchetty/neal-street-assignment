@@ -1,0 +1,27 @@
+---
+# ------------------------------------------------------------------------------
+# Security Baseline — Handlers
+# ------------------------------------------------------------------------------
+# Handlers are only triggered when a task reports "changed", preventing
+# unnecessary service restarts on idempotent re-runs.
+# ------------------------------------------------------------------------------
+
+- name: restart sshd
+  ansible.builtin.systemd:
+    name: sshd
+    state: restarted
+  listen: restart sshd
+
+- name: restart auditd
+  # auditd requires a special restart method — it cannot be restarted via
+  # systemctl on systems where audit rules are immutable (-e 2). Use the
+  # service command which calls the init script directly.
+  ansible.builtin.command: service auditd restart
+  changed_when: true
+  listen: restart auditd
+
+- name: restart dnf-automatic
+  ansible.builtin.systemd:
+    name: dnf-automatic.timer
+    state: restarted
+  listen: restart dnf-automatic

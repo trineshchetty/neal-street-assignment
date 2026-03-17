@@ -1,0 +1,46 @@
+# ------------------------------------------------------------------------------
+# Security Baseline — Default Variables
+# ------------------------------------------------------------------------------
+# Override these per-environment in group_vars or the playbook.
+# ------------------------------------------------------------------------------
+
+# System packages to install for baseline security tooling
+security_packages:
+  - fail2ban
+  - aide
+  - audit
+  - policycoreutils-python-utils
+
+# Automatic security updates via dnf-automatic
+enable_auto_updates: true
+
+# SSH hardening — defence in depth even though port 22 is closed at SG level
+ssh_permit_root_login: "no"
+ssh_password_authentication: "no"
+ssh_max_auth_tries: 3
+ssh_client_alive_interval: 300
+ssh_client_alive_count_max: 2
+
+# Kernel hardening — sysctl tunables
+sysctl_settings:
+  # Prevent IP spoofing
+  net.ipv4.conf.all.rp_filter: 1
+  net.ipv4.conf.default.rp_filter: 1
+  # Disable source routing (no legitimate use case for a web server)
+  net.ipv4.conf.all.accept_source_route: 0
+  net.ipv4.conf.default.accept_source_route: 0
+  # Ignore ICMP redirects (prevent MITM via route manipulation)
+  net.ipv4.conf.all.accept_redirects: 0
+  net.ipv4.conf.default.accept_redirects: 0
+  net.ipv4.conf.all.secure_redirects: 0
+  net.ipv4.conf.default.secure_redirects: 0
+  # Log suspicious packets for security monitoring
+  net.ipv4.conf.all.log_martians: 1
+  net.ipv4.conf.default.log_martians: 1
+  # Ignore ICMP broadcast requests (prevent Smurf attacks)
+  net.ipv4.icmp_echo_ignore_broadcasts: 1
+  # SYN flood protection
+  net.ipv4.tcp_syncookies: 1
+  # Disable IPv6 if not in use (reduces attack surface)
+  net.ipv6.conf.all.disable_ipv6: 1
+  net.ipv6.conf.default.disable_ipv6: 1

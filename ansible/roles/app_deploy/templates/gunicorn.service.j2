@@ -1,0 +1,44 @@
+# {{ ansible_managed }}
+# ------------------------------------------------------------------------------
+# Gunicorn Service — {{ app_name }}
+# ------------------------------------------------------------------------------
+
+[Unit]
+Description=Gunicorn daemon for {{ app_name }}
+After=network.target
+Wants=network.target
+
+[Service]
+Type=notify
+User={{ app_user }}
+Group={{ app_group }}
+WorkingDirectory={{ app_dir }}
+EnvironmentFile={{ app_dir }}/.env
+ExecStart={{ app_dir }}/venv/bin/gunicorn --config {{ app_dir }}/gunicorn.conf.py app:app
+ExecReload=/bin/kill -s HUP $MAINPID
+
+# Restart policy — recover from crashes, but don't restart loop
+Restart=on-failure
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# Graceful shutdown — allow in-flight requests to complete
+TimeoutStopSec=30
+KillMode=mixed
+KillSignal=SIGTERM
+
+# Systemd sandboxing — defence in depth
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+ReadOnlyPaths=/etc
+
+# Logging — stdout/stderr to journal, picked up by CloudWatch Agent
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier={{ app_name }}
+
+[Install]
+WantedBy=multi-user.target

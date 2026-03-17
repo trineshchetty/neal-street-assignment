@@ -1,0 +1,44 @@
+---
+# ------------------------------------------------------------------------------
+# OS Patching & Package Management
+# ------------------------------------------------------------------------------
+# Ensures the system is fully patched and security tooling is installed.
+# dnf-automatic handles ongoing security patches between Ansible runs.
+# ------------------------------------------------------------------------------
+
+- name: Update all packages to latest version
+  ansible.builtin.dnf:
+    name: "*"
+    state: latest
+    update_cache: true
+  tags: [security, patching]
+
+- name: Install security baseline packages
+  ansible.builtin.dnf:
+    name: "{{ security_packages }}"
+    state: present
+  tags: [security, patching]
+
+- name: Install dnf-automatic for security updates
+  ansible.builtin.dnf:
+    name: dnf-automatic
+    state: present
+  when: enable_auto_updates
+  tags: [security, patching]
+
+- name: Configure dnf-automatic for security updates only
+  ansible.builtin.lineinfile:
+    path: /etc/dnf/automatic.conf
+    regexp: "^upgrade_type"
+    line: "upgrade_type = security"
+  when: enable_auto_updates
+  notify: restart dnf-automatic
+  tags: [security, patching]
+
+- name: Enable and start dnf-automatic timer
+  ansible.builtin.systemd:
+    name: dnf-automatic.timer
+    enabled: true
+    state: started
+  when: enable_auto_updates
+  tags: [security, patching]

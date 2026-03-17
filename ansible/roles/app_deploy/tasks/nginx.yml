@@ -1,0 +1,48 @@
+---
+# ------------------------------------------------------------------------------
+# Nginx Reverse Proxy
+# ------------------------------------------------------------------------------
+# Nginx sits in front of Gunicorn and handles:
+#   - Request buffering (protects Gunicorn workers from slow clients)
+#   - Static file serving (if needed in future)
+#   - Connection management (keepalive to clients, separate to upstream)
+#   - Security headers (XSS protection, content-type sniffing, clickjacking)
+#
+# The ALB terminates external HTTP. Nginx listens on port 80 for ALB
+# health checks and proxies to Gunicorn on 127.0.0.1:8000.
+# ------------------------------------------------------------------------------
+
+- name: Install Nginx
+  ansible.builtin.dnf:
+    name: nginx
+    state: present
+  tags: [deploy]
+
+- name: Remove default Nginx config
+  ansible.builtin.file:
+    path: /etc/nginx/conf.d/default.conf
+    state: absent
+  notify: restart nginx
+  tags: [deploy]
+
+- name: Deploy Nginx reverse proxy config
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/conf.d/{{ app_name }}.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart nginx
+  tags: [deploy]
+
+- name: Validate Nginx configuration
+  ansible.builtin.command: nginx -t
+  changed_when: false
+  tags: [deploy]
+
+- name: Enable and start Nginx
+  ansible.builtin.systemd:
+    name: nginx
+    enabled: true
+    state: started
+  tags: [deploy]

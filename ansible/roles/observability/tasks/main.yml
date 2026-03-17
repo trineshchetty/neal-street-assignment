@@ -1,0 +1,22 @@
+---
+# ------------------------------------------------------------------------------
+# Observability Role — Task Entry Point
+# ------------------------------------------------------------------------------
+# Installs and configures the CloudWatch Agent to ship logs and metrics
+# from EC2 instances to CloudWatch. This is the agent-side counterpart
+# to the Terraform observability module (which creates the log groups).
+#
+# Why CloudWatch Agent over alternatives (Fluentd, Datadog, etc.)?
+#   - Zero additional infrastructure to manage
+#   - IAM-based auth (instance profile), no API keys to rotate
+#   - Native integration with CloudWatch Logs Insights and alarms
+#   - Pre-packaged in Amazon Linux 2023 repos
+# ------------------------------------------------------------------------------
+
+- name: Include CloudWatch Agent installation
+  ansible.builtin.include_tasks: install.yml
+  tags: [observability]
+
+- name: Include CloudWatch Agent configuration
+  ansible.builtin.include_tasks: configure.yml
+  tags: [observability]

@@ -1,0 +1,41 @@
+---
+# ------------------------------------------------------------------------------
+# CloudWatch Agent Configuration
+# ------------------------------------------------------------------------------
+# Deploys the agent config and starts the service. The config defines:
+#   - Which log files to collect and which log groups to ship them to
+#   - System-level metrics (memory, disk — not available from EC2 default metrics)
+#
+# The agent reads the config from /opt/aws/amazon-cloudwatch-agent/etc/
+# and is managed by amazon-cloudwatch-agent-ctl, not systemctl directly.
+# ------------------------------------------------------------------------------
+
+- name: Create CloudWatch Agent config directory
+  ansible.builtin.file:
+    path: /opt/aws/amazon-cloudwatch-agent/etc
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  tags: [observability]
+
+- name: Deploy CloudWatch Agent configuration
+  ansible.builtin.template:
+    src: cloudwatch-agent-config.json.j2
+    dest: /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart cloudwatch agent
+  tags: [observability]
+
+- name: Start CloudWatch Agent with config
+  ansible.builtin.command:
+    cmd: >-
+      /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl
+      -a fetch-config
+      -m ec2
+      -s
+      -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+  changed_when: true
+  tags: [observability]

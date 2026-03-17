@@ -1,0 +1,162 @@
+# ------------------------------------------------------------------------------
+# CI Pipeline — Terraform Validate + Ansible Lint + App Lint
+# ------------------------------------------------------------------------------
+# Runs on every push and PR to validate code quality before merge.
+#
+# Design decisions:
+#   - OIDC federation for AWS credentials (no long-lived access keys)
+#   - Concurrency group per branch prevents overlapping runs
+#   - Separate jobs for independent validation (fail fast, parallel)
+#   - Pinned action versions for supply chain security
+# ------------------------------------------------------------------------------
+
+name: CI
+
+on:
+  push:
+    branches: [main, "feature/**"]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TF_VERSION: "1.14.7"
+  PYTHON_VERSION: "3.11"
+  AWS_REGION: "eu-west-1"
+
+permissions:
+  contents: read
+
+jobs:
+  # --------------------------------------------------------------------------
+  # Terraform Validation
+  # --------------------------------------------------------------------------
+  # Runs fmt check + validate for each environment and the backend config.
+  # Does NOT run plan/apply — that's a separate deploy workflow.
+  # --------------------------------------------------------------------------
+  terraform:
+    name: Terraform Validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform fmt check
+        run: terraform fmt -check -recursive -diff
+        working-directory: terraform
+
+      - name: Validate backend module
+        working-directory: terraform/backend
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+      - name: Validate dev environment
+        working-directory: terraform/environments/dev
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+  # --------------------------------------------------------------------------
+  # Ansible Lint
+  # --------------------------------------------------------------------------
+  # Validates Ansible playbooks and roles against best practices.
+  # Uses ansible-lint which checks for deprecated modules, missing tags,
+  # risky file permissions, and other common issues.
+  # --------------------------------------------------------------------------
+  ansible:
+    name: Ansible Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Ansible and lint tools
+        run: |
+          pip install --upgrade pip
+          pip install ansible ansible-lint yamllint
+
+      - name: Run yamllint on Ansible files
+        run: yamllint -d relaxed ansible/
+        continue-on-error: true
+
+      - name: Run ansible-lint
+        run: ansible-lint ansible/site.yml
+        continue-on-error: true
+
+  # --------------------------------------------------------------------------
+  # Python App Lint
+  # --------------------------------------------------------------------------
+  # Validates the Flask health app code quality.
+  # Runs flake8 for style and basic static analysis.
+  # --------------------------------------------------------------------------
+  python:
+    name: Python Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install flake8
+          pip install -r app/requirements.txt
+
+      - name: Run flake8
+        run: flake8 app/ --max-line-length=120 --exclude=__pycache__
+
+  # --------------------------------------------------------------------------
+  # Security Scanning
+  # --------------------------------------------------------------------------
+  # Runs tfsec for Terraform security misconfigurations and checkov as a
+  # second opinion. Catches issues like open security groups, unencrypted
+  # resources, missing logging before they reach AWS.
+  # --------------------------------------------------------------------------
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: terraform
+          soft_fail: true
+
+      - name: Setup Python for checkov
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Run checkov
+        run: |
+          pip install checkov
+          checkov -d terraform --quiet --compact --soft-fail

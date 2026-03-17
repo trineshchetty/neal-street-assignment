@@ -1,0 +1,66 @@
+---
+# ------------------------------------------------------------------------------
+# SSH Hardening
+# ------------------------------------------------------------------------------
+# Defence in depth — even though port 22 is closed at the security group
+# level and we use SSM Session Manager for access, we still harden sshd.
+#
+# Why? Because:
+#   1. Security groups can be misconfigured (human error)
+#   2. Compliance frameworks (CIS, SOC2) require SSH hardening regardless
+#   3. If SSM is ever unavailable, emergency SSH access should be hardened
+# ------------------------------------------------------------------------------
+
+- name: Harden sshd — disable root login
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?PermitRootLogin"
+    line: "PermitRootLogin {{ ssh_permit_root_login }}"
+    validate: "sshd -t -f %s"
+  notify: restart sshd
+  tags: [security, ssh]
+
+- name: Harden sshd — disable password authentication
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?PasswordAuthentication"
+    line: "PasswordAuthentication {{ ssh_password_authentication }}"
+    validate: "sshd -t -f %s"
+  notify: restart sshd
+  tags: [security, ssh]
+
+- name: Harden sshd — limit authentication attempts
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?MaxAuthTries"
+    line: "MaxAuthTries {{ ssh_max_auth_tries }}"
+    validate: "sshd -t -f %s"
+  notify: restart sshd
+  tags: [security, ssh]
+
+- name: Harden sshd — set client alive interval
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?ClientAliveInterval"
+    line: "ClientAliveInterval {{ ssh_client_alive_interval }}"
+    validate: "sshd -t -f %s"
+  notify: restart sshd
+  tags: [security, ssh]
+
+- name: Harden sshd — set client alive count max
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?ClientAliveCountMax"
+    line: "ClientAliveCountMax {{ ssh_client_alive_count_max }}"
+    validate: "sshd -t -f %s"
+  notify: restart sshd
+  tags: [security, ssh]
+
+- name: Harden sshd — disable X11 forwarding
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?X11Forwarding"
+    line: "X11Forwarding no"
+    validate: "sshd -t -f %s"
+  notify: restart sshd
+  tags: [security, ssh]

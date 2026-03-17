@@ -1,0 +1,21 @@
+---
+# ------------------------------------------------------------------------------
+# Kernel Hardening — sysctl tunables
+# ------------------------------------------------------------------------------
+# Applies network-level protections against common attack vectors:
+# IP spoofing, source routing, ICMP redirect attacks, SYN floods.
+#
+# These settings align with CIS Amazon Linux 2023 Benchmark recommendations.
+# Each tunable is documented in defaults/main.yml.
+# ------------------------------------------------------------------------------
+
+- name: Apply sysctl security settings
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_set: true
+    state: present
+    reload: true
+    sysctl_file: /etc/sysctl.d/99-security-hardening.conf
+  loop: "{{ sysctl_settings | dict2items }}"
+  tags: [security, kernel]

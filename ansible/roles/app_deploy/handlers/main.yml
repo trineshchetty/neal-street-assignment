@@ -1,0 +1,21 @@
+---
+# ------------------------------------------------------------------------------
+# App Deployment — Handlers
+# ------------------------------------------------------------------------------
+
+- name: reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+  listen: reload systemd
+
+- name: restart gunicorn
+  ansible.builtin.systemd:
+    name: "{{ app_name }}"
+    state: restarted
+  listen: restart gunicorn
+
+- name: restart nginx
+  ansible.builtin.systemd:
+    name: nginx
+    state: restarted
+  listen: restart nginx

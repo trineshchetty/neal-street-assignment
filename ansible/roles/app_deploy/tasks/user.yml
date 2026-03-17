@@ -1,0 +1,26 @@
+---
+# ------------------------------------------------------------------------------
+# Application Service User
+# ------------------------------------------------------------------------------
+# The app runs as a dedicated non-root user with no login shell.
+# This limits blast radius if the application is compromised — the attacker
+# gets a user that can't sudo, has no home directory, and owns only /opt/rewards.
+# ------------------------------------------------------------------------------
+
+- name: Create application group
+  ansible.builtin.group:
+    name: "{{ app_group }}"
+    system: true
+    state: present
+  tags: [deploy]
+
+- name: Create application user
+  ansible.builtin.user:
+    name: "{{ app_user }}"
+    group: "{{ app_group }}"
+    system: true
+    shell: /sbin/nologin
+    home: "{{ app_dir }}"
+    create_home: false
+    comment: "Neal Street Rewards application service account"
+  tags: [deploy]

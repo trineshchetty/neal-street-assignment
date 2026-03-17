@@ -1,0 +1,32 @@
+---
+# ------------------------------------------------------------------------------
+# Gunicorn Systemd Service
+# ------------------------------------------------------------------------------
+# Runs the Flask app under Gunicorn with proper process supervision.
+#
+# Key systemd features used:
+#   - Restart=on-failure with 5s delay — auto-recovers from crashes
+#   - EnvironmentFile — secrets/config injected without baking into the unit
+#   - ProtectSystem/ProtectHome — systemd sandboxing for defence in depth
+#   - PrivateTmp — isolated /tmp prevents cross-service data leaks
+# ------------------------------------------------------------------------------
+
+- name: Deploy Gunicorn systemd unit
+  ansible.builtin.template:
+    src: gunicorn.service.j2
+    dest: /etc/systemd/system/{{ app_name }}.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - reload systemd
+    - restart gunicorn
+  tags: [deploy]
+
+- name: Enable and start Gunicorn service
+  ansible.builtin.systemd:
+    name: "{{ app_name }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  tags: [deploy]

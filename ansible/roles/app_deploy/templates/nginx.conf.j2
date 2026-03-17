@@ -1,0 +1,55 @@
+# {{ ansible_managed }}
+# ------------------------------------------------------------------------------
+# Nginx Reverse Proxy — {{ app_name }}
+# ------------------------------------------------------------------------------
+
+upstream app_backend {
+    server {{ nginx_proxy_pass | regex_replace('^http://', '') }};
+    keepalive 4;
+}
+
+server {
+    listen 80;
+    server_name {{ nginx_server_name }};
+
+    # Security headers — defence in depth even behind the ALB
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # Disable server version disclosure
+    server_tokens off;
+
+    # Request size limits — prevent abuse
+    client_max_body_size 1m;
+    client_body_timeout 10s;
+    client_header_timeout 10s;
+
+    # Health check endpoint — proxied to Gunicorn
+    location /health {
+        proxy_pass http://app_backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        proxy_http_version 1.1;
+
+        # Timeouts aligned with Gunicorn timeout (30s)
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 30s;
+        proxy_send_timeout 30s;
+    }
+
+    # Deny all other paths — minimal attack surface
+    location / {
+        return 404;
+    }
+
+    # Block access to hidden files (dotfiles)
+    location ~ /\. {
+        deny all;
+        return 404;
+    }
+}
