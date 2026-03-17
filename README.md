@@ -4,6 +4,8 @@ A production-shaped dev web tier for the Neal Street digital payments and reward
 
 ## Architecture
 
+![Architecture Diagram](arch.drawio.png)
+
 ```
 Internet
    │
