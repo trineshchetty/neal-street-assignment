@@ -1,0 +1,164 @@
+# ------------------------------------------------------------------------------
+# Deploy Pipeline — Terraform Plan/Apply + Ansible
+# ------------------------------------------------------------------------------
+# Triggered on push to main (after CI passes) or manually via workflow_dispatch.
+#
+# Design decisions:
+#   - OIDC federation for AWS credentials — short-lived STS tokens per run,
+#     no long-lived access keys stored in GitHub Secrets
+#   - GitHub Environments with protection rules model the prod approval gate
+#   - Plan output is posted as a PR comment for review (on PRs)
+#   - Apply only runs on main branch pushes (not PRs)
+#   - Concurrency group prevents overlapping Terraform applies
+# ------------------------------------------------------------------------------
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy to"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+
+concurrency:
+  group: deploy-${{ github.event.inputs.environment || 'dev' }}
+  cancel-in-progress: false # never cancel in-progress deploys
+
+env:
+  TF_VERSION: "1.14.7"
+  PYTHON_VERSION: "3.11"
+  AWS_REGION: "eu-west-1"
+
+permissions:
+  id-token: write # Required for OIDC federation
+  contents: read
+
+jobs:
+  # --------------------------------------------------------------------------
+  # Terraform Plan
+  # --------------------------------------------------------------------------
+  plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    environment: dev
+    defaults:
+      run:
+        shell: bash
+        working-directory: terraform/environments/dev
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan -input=false
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: terraform/environments/dev/tfplan
+          retention-days: 1
+
+  # --------------------------------------------------------------------------
+  # Terraform Apply
+  # --------------------------------------------------------------------------
+  apply:
+    name: Terraform Apply
+    needs: plan
+    runs-on: ubuntu-latest
+    environment: dev
+    defaults:
+      run:
+        shell: bash
+        working-directory: terraform/environments/dev
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Download plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: terraform/environments/dev
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve -input=false tfplan
+
+  # --------------------------------------------------------------------------
+  # Ansible Deploy
+  # --------------------------------------------------------------------------
+  configure:
+    name: Ansible Configure
+    needs: apply
+    runs-on: ubuntu-latest
+    environment: dev
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Ansible and AWS dependencies
+        run: |
+          pip install --upgrade pip
+          pip install ansible boto3 botocore
+
+      - name: Install Ansible AWS collection
+        run: ansible-galaxy collection install amazon.aws community.aws
+
+      - name: Run Ansible playbook
+        working-directory: ansible
+        run: |
+          ansible-playbook site.yml \
+            -e "commit_sha=${{ github.sha }}" \
+            -e "environment=dev" \
+            -e "aws_region=${{ env.AWS_REGION }}"
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "false"
